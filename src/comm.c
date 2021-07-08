@@ -50,13 +50,14 @@ bool send_msg(int socket_fd, struct MonnetHeader **mHeader, char *payload)
     }
     printf("[OK]\n");
 
+    //Send ask for ACK
     if ((*mHeader)->ack == 1)
     {
         char *response_payload = {0};
         struct MonnetHeader *response_head = malloc(sizeof(struct MonnetHeader));
 
         if (receive_msg(socket_fd, &response_head, response_payload))
-        {            
+        {
             if (strcmp(response_head->msg, "ACK") == 0)
             {
                 printf("Got ACK response\n");
@@ -153,7 +154,50 @@ bool receive_msg(int socket_fd, struct MonnetHeader **mHeader, char *payload)
         //Not valid head found
         //sendBuffer = build_msg("NACK", NULL);
     }
+
     printf("Response (%ld):\n%s", recive_total_bytes, payload);
 
     return true;
+}
+
+
+struct MonnetHeader *get_header(char *header)
+{
+    struct MonnetHeader *mheader = malloc(sizeof(struct MonnetHeader));
+    char key[31];
+    char val[31];
+    char *line = strtok(strdup(header), "\r\n");
+
+    while (line)
+    {
+        if (sscanf(line, "%31[a-zA-Z_0-9]:%31s", key, val) == 2)
+        {
+
+            if (strcmp(key, "Version") == 0)
+            {
+                mheader->version = atoi(val);
+            }
+            if (strcmp(key, "Auth") == 0)
+            {
+                //mheader.auth = malloc(strlen(val)+1);
+                strcpy(mheader->auth, val);
+            }
+            if (strcmp(key, "Size") == 0)
+            {
+                mheader->size = atoi(val);
+            }
+            if (strcmp(key, "Ack") == 0)
+            {
+                mheader->ack = atoi(val);
+            }
+            if (strcmp(key, "Msg") == 0)
+            {
+                //mheader.msg = malloc(strlen(val)+1);
+                strcpy(mheader->msg, val);
+            }
+        }
+        line = strtok(NULL, "\r\n");
+    }
+
+    return mheader;
 }

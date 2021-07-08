@@ -27,18 +27,7 @@ void *thread_client(void *args)
     struct MonnetHeader *recive_head = malloc(sizeof(struct MonnetHeader));
     char *recive_payload = {0};
 
-    if (receive_msg(client_socket_fd, &recive_head, recive_payload))
-    {
-        if (recive_head->ack == 1)
-        {
-            struct MonnetHeader *reply_head = malloc(sizeof(struct MonnetHeader));
-            reply_head->size = 0;
-            reply_head->ack = 0;
-            strcpy(reply_head->msg, "ACK");
-            send_msg(client_socket_fd, &reply_head, NULL);
-            free(reply_head);
-        }
-    }
+    receive_msg(client_socket_fd, &recive_head, recive_payload);
 
     free(recive_head);
     free(args);

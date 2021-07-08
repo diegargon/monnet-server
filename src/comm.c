@@ -11,35 +11,32 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "config.h"
-#include "comm.h"
 #include "utils.h"
+#include "comm.h"
 
-char *build_msg(char *msg, int ack, char *payload)
+char *build_msg(struct MonnetHeader *mheader, char *payload)
 {
-
     char *header = (char *)malloc(sizeof(char) * 1024);
-    size_t payload_size = 0;
-    if (payload != NULL)
-        payload_size = strlen(payload);
 
     sprintf(header, "Version:%d\r\n", VERSION);
     sprintf(header + strlen(header), "Auth:%s\r\n", "0");
-    sprintf(header + strlen(header), "Ack:%d\r\n", ack);
-    sprintf(header + strlen(header), "Msg:%s\r\n", msg);
-    sprintf(header + strlen(header), "Size:%ld\r\n", payload_size);
+    sprintf(header + strlen(header), "Ack:%d\r\n", mheader->ack);
+    sprintf(header + strlen(header), "Msg:%s\r\n", mheader->msg);
+    sprintf(header + strlen(header), "Size:%ld\r\n", mheader->size);
     sprintf(header + strlen(header), "\r\n\r\n");
-    if (payload_size > 0)
+    if (mheader->size > 0)
         sprintf(header + strlen(header), "%s", payload);
 
     return header;
 }
 
-bool send_msg(int socket_fd, char *msg)
+bool send_msg(int socket_fd, struct MonnetHeader **mHeader, char *payload)
 {
-
+    char *msg = {0};
     int sended_bytes = 0;
     size_t sended_total_bytes = 0;
 
+    msg = build_msg((*mHeader), payload);
     printf("Sending msg:");
     while (sended_total_bytes < strlen(msg))
     {
@@ -53,10 +50,31 @@ bool send_msg(int socket_fd, char *msg)
     }
     printf("[OK]\n");
 
+    if ((*mHeader)->ack == 1)
+    {
+        char *response_payload = {0};
+        struct MonnetHeader *response_head = malloc(sizeof(struct MonnetHeader));
+
+        if (receive_msg(socket_fd, &response_head, response_payload))
+        {            
+            if (strcmp(response_head->msg, "ACK") == 0)
+            {
+                printf("Got ACK response\n");
+                free(response_head);
+                return true;
+            }
+        }
+        else
+        {
+            free(response_head);
+            return false;
+        }
+    }
+
     return true;
 }
 
-bool receive_msg(int socket_fd)
+bool receive_msg(int socket_fd, struct MonnetHeader **mHeader, char *payload)
 {
     char read_buffer[8192] = {0};
     int read_bytes = 0;
@@ -64,8 +82,6 @@ bool receive_msg(int socket_fd)
     size_t recive_size = 8192;
     char *end_head = NULL;
     int paytotal = 0;
-
-    struct MonnetHeader mheader;
 
     printf("Reading msg: \n");
     while (recive_total_bytes < recive_size)
@@ -94,20 +110,22 @@ bool receive_msg(int socket_fd)
         printf("End head (%ld) *%s*\n", strlen(end_head), end_head);
         size_t recv_extra = strlen(end_head) - strlen(END_HEAD) - 1;
         //printf("ENDHEAD (%ld) -> *%s*\n", strlen(end_head) - strlen(END_HEAD) -2, end_head+strlen(END_HEAD)+2);
-        mheader = get_header(read_buffer);
-        if (recv_extra < mheader.size)
+
+        *mHeader = get_header(read_buffer);
+
+        if (recv_extra < (*mHeader)->size)
         {
-            printf("Head:OK: Payload: PARTIALLY (R:%ld/P:%ld)\n", recv_extra, mheader.size);
+            printf("Head:OK: Payload: PARTIALLY (R:%ld/P:%ld)\n", recv_extra, (*mHeader)->size);
             //rid head
             strcpy(read_buffer, (end_head + strlen(END_HEAD) + 2));
 
             paytotal = strlen(read_buffer);
-            printf("Paytotal %d / Pay %ld\n", paytotal, mheader.size);
+            printf("Paytotal %d / Pay %ld\n", paytotal, (*mHeader)->size);
 
-            while (paytotal < mheader.size)
+            while (paytotal < (*mHeader)->size)
             {
                 //TODO check if mheader.size is bigger than RECV_BUFFER
-                read_bytes = recv(socket_fd, &read_buffer[paytotal], mheader.size, 0);
+                read_bytes = recv(socket_fd, &read_buffer[paytotal], (*mHeader)->size, 0);
                 if (read_bytes < 0)
                 {
                     printf("Error reciving \n");
@@ -122,10 +140,11 @@ bool receive_msg(int socket_fd)
         }
         else
         {
-            printf("Head:OK Payload: OK (R:%ld/P:%ld)\n", recv_extra, mheader.size);
+            printf("Head:OK Payload: OK (R:%ld/P:%ld)\n", recv_extra, (*mHeader)->size);
+            printf("Msg-> %s\n", (*mHeader)->msg);
+            payload = (char *)malloc(sizeof(char) * strlen(end_head));
             //rid head
-            strcpy(read_buffer, (end_head + strlen(END_HEAD) + 2));
-
+            strcpy(payload, (end_head + strlen(END_HEAD) + 2));
         }
         //sendBuffer = build_msg("ACK", NULL);
     }
@@ -134,9 +153,7 @@ bool receive_msg(int socket_fd)
         //Not valid head found
         //sendBuffer = build_msg("NACK", NULL);
     }
-    
-    printf("Response (%ld):\n%s", recive_total_bytes, read_buffer);
-
+    printf("Response (%ld):\n%s", recive_total_bytes, payload);
 
     return true;
 }

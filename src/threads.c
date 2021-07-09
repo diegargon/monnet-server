@@ -26,9 +26,13 @@ void *thread_client(void *args)
     fflush(stdout);
 
     struct MonnetHeader *recive_head = malloc(sizeof(struct MonnetHeader));
-    char *recive_payload = {0};
+    char *recive_payload = NULL;
 
-    receive_msg(client_socket_fd, &recive_head, recive_payload);
+    if (receive_msg(client_socket_fd, &recive_head, &recive_payload)) {
+        printf("Msg main: %s\n", recive_head->msg);
+        printf("Payload main:%s\n", recive_payload);
+    }
+
 
     free(recive_head);
     free(args);

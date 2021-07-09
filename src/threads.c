@@ -11,10 +11,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "threads.h"
 #include "config.h"
 #include "utils.h"
 #include "comm.h"
-#include "threads.h"
+#include "comm_s.h"
 
 void *thread_client(void *args)
 {

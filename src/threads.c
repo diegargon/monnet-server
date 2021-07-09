@@ -33,10 +33,9 @@ void *thread_client(void *args)
         printf("Payload main:%s\n", recive_payload);
     }
 
-
     free(recive_head);
+    free(recive_payload);
     free(args);
-    //printf("Sending response %s\n", sendBuffer);
     printf("Client Socket closed\n\r");
     fflush(stdout);
     close(client_socket_fd);

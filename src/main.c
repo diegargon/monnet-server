@@ -31,21 +31,17 @@ int main(int argc, char *argv[]) {
     int port = PORT;
     struct sockaddr_in address;
     socklen_t client_address_len;
-
-
     pthread_attr_t pthread_attr;
     pthread_arg_t *pthread_args;
     pthread_t pthread;
 
     /* Signals */
-
     signal(SIGHUP, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGQUIT, signal_handler);
     signal(SIGINT, signal_handler);
 
     /* Fill IPv4 struct */ 
-
     memset(&address, 0, sizeof address);
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
@@ -63,7 +59,6 @@ int main(int argc, char *argv[]) {
 
     /* Socket  Listening */
     /* SOMAXCONN Auto max conn queue */
-
     if (listen(socket_fd, SOMAXCONN) == -1) {
         error_fatal("listen");        
     }    
@@ -93,8 +88,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        pthread_args->client_socket_fd = client_socket_fd;
-
+        pthread_args->client_socket_fd = client_socket_fd;        
         if (pthread_create(&pthread, &pthread_attr, thread_client, (void *)pthread_args) != 0) {
             error_warning("pthread_create");
             free(pthread_args);

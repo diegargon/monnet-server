@@ -18,18 +18,7 @@
 #include "comm_s.h"
 #include "threads.h"
 #include "signals.h"
-
-void error_warning(char *msg)
-{
-    perror(msg);
-}
-
-void error_fatal(char *msg)
-{
-    perror(msg);
-    fflush(stdout);
-    exit(1);
-}
+#include "error.h"
 
 #define MAX_HOST 5
 int main(int argc, char *argv[])
